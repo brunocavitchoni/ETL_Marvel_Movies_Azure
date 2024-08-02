@@ -1,0 +1,64 @@
+{
+	"name": "DataLake_arquivoCSV",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "datalake",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobStorageLocation",
+				"fileName": "mcu_box_office.csv",
+				"container": "marvel-movies"
+			},
+			"columnDelimiter": ",",
+			"escapeChar": "\\",
+			"firstRowAsHeader": true,
+			"quoteChar": "\""
+		},
+		"schema": [
+			{
+				"name": "movie_title",
+				"type": "String"
+			},
+			{
+				"name": "mcu_phase",
+				"type": "String"
+			},
+			{
+				"name": "release_date",
+				"type": "String"
+			},
+			{
+				"name": "tomato_meter",
+				"type": "String"
+			},
+			{
+				"name": "audience_score",
+				"type": "String"
+			},
+			{
+				"name": "movie_duration",
+				"type": "String"
+			},
+			{
+				"name": "production_budget",
+				"type": "String"
+			},
+			{
+				"name": "opening_weekend",
+				"type": "String"
+			},
+			{
+				"name": "domestic_box_office",
+				"type": "String"
+			},
+			{
+				"name": "worldwide_box_office",
+				"type": "String"
+			}
+		]
+	}
+}
