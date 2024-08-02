@@ -53,6 +53,216 @@
 						"type": "DatasetReference"
 					}
 				]
+			},
+			{
+				"name": "Transform to silver_marvel_movies",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "CopyData",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "DBMarvelMovies",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": "INSERT INTO silver_marvel_movies (movie_title, mcu_phase, release_date, tomato_meter, audience_score, movie_duration, production_budget, opening_weekend, domestic_box_office, worldwide_box_office)\nSELECT \n    movie_title,\n    mcu_phase,\n    CONVERT(DATE, release_date, 101) AS release_date, -- Converte string para data no formato MM/DD/YYYY\n    tomato_meter,\n    audience_score,\n    movie_duration,\n    TRY_CONVERT(DECIMAL(20,2), REPLACE(REPLACE(production_budget, '\"', ''), ',', '')) AS production_budget,\n    TRY_CONVERT(DECIMAL(20,2), REPLACE(REPLACE(opening_weekend, '\"', ''), ',', '')) AS opening_weekend,\n    TRY_CONVERT(DECIMAL(20,2), REPLACE(REPLACE(domestic_box_office, '\"', ''), ',', '')) AS domestic_box_office,\n    TRY_CONVERT(DECIMAL(20,2), REPLACE(REPLACE(worldwide_box_office, '\"', ''), ',', '')) AS worldwide_box_office\nFROM bronze_marvel_movies;"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "Transform to silver_franchise_mapping",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "CopyData",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "DBMarvelMovies",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": "INSERT INTO silver_franchise_mapping\nSELECT \n    movie_title,\n    CASE\n        WHEN movie_title LIKE '%iron%' THEN 'Iron Man'\n        WHEN movie_title LIKE '%hulk%' THEN 'Hulk'\n        WHEN movie_title LIKE '%thor%' THEN 'Thor'\n        WHEN movie_title LIKE '%america%' THEN 'Captain América'\n        WHEN movie_title LIKE '%avengers%' THEN 'Avengers'\n        WHEN movie_title LIKE '%guardians%' THEN 'Guardians of the Galaxy'\n        WHEN movie_title LIKE '%ant-man%' THEN 'Ant-Man'\n        WHEN movie_title LIKE '%strange%' THEN 'Doctor Strange'\n        WHEN movie_title LIKE '%spider%' THEN 'Spider-Man'\n        WHEN movie_title LIKE '%panther%' THEN 'Black Panther'\n        WHEN movie_title LIKE '%marvel%' THEN 'Captain Marvel'\n        WHEN movie_title LIKE '%widow%' THEN 'Black Widow'\n        WHEN movie_title LIKE '%shang%' THEN 'Shang-Chi'\n        WHEN movie_title LIKE '%eternals%' THEN 'Eternals'\n        ELSE 'Unknow'\n    END AS 'franchise_name'\nFROM silver_marvel_movies\nGROUP BY movie_title\nORDER BY franchise_name;"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "Transform to gold_movies_summary",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "Transform to silver_marvel_movies",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "DBMarvelMovies",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": "INSERT INTO gold_movies_summary\r\nSELECT \r\n    release_date,\r\n    mcu_phase,\r\n    movie_title,\r\n    tomato_meter,\r\n    audience_score\r\nFROM silver_marvel_movies\r\nORDER BY tomato_meter DESC;"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "Transform to gold_movies_financial_performance",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "Transform to silver_marvel_movies",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "DBMarvelMovies",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": "INSERT INTO gold_movies_financial_performance (release_date, mcu_phase, movie_title, total_profit, production_budget, opening_weekend, domestic_box_office, worldwide_box_office)\nSELECT \n    release_date,\n    mcu_phase,\n    movie_title,\n    (TRY_CONVERT(DECIMAL(20,2), REPLACE(REPLACE(worldwide_box_office, '\"', ''), ',', '')) - TRY_CONVERT(DECIMAL(20,2), REPLACE(REPLACE(production_budget, '\"', ''), ',', ''))) AS total_profit,\n    TRY_CONVERT(DECIMAL(20,2), REPLACE(REPLACE(production_budget, '\"', ''), ',', '')) AS production_budget,\n    TRY_CONVERT(DECIMAL(20,2), REPLACE(REPLACE(opening_weekend, '\"', ''), ',', '')) AS opening_weekend,\n    TRY_CONVERT(DECIMAL(20,2), REPLACE(REPLACE(domestic_box_office, '\"', ''), ',', '')) AS domestic_box_office,\n    TRY_CONVERT(DECIMAL(20,2), REPLACE(REPLACE(worldwide_box_office, '\"', ''), ',', '')) AS worldwide_box_office\nFROM silver_marvel_movies\nORDER BY total_profit DESC;"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "Transform to gold_franchises_summary",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "Transform to silver_marvel_movies",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Transform to silver_franchise_mapping",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "DBMarvelMovies",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": "INSERT INTO gold_franchises_summary\r\nSELECT \r\n    f.franchise_name,\r\n    count(*) as total_movies,\r\n    ROUND(AVG(m.tomato_meter),2) AS AVG_tomato_meter,\r\n    ROUND(AVG(m.audience_score),2) AS AVG_audience_score\r\nFROM silver_franchise_mapping AS f\r\nJOIN silver_marvel_movies AS m\r\nON f.movie_title = m.movie_title\r\nGROUP BY franchise_name\r\nORDER BY AVG_tomato_meter DESC, AVG_audience_score DESC;"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "Transform to gold_franchises_financial_performance",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "Transform to silver_marvel_movies",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Transform to silver_franchise_mapping",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "DBMarvelMovies",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": "INSERT INTO gold_franchises_financial_performance\r\nSELECT\r\n    f.franchise_name,\r\n    COUNT(*) AS total_movies,\r\n    SUM(TRY_CONVERT(DECIMAL(20,2), REPLACE(REPLACE(worldwide_box_office, '\"', ''), ',', '')) - TRY_CONVERT(DECIMAL(20,2), REPLACE(REPLACE(production_budget, '\"', ''), ',', ''))) AS total_profit,\r\n    ROUND(AVG(TRY_CONVERT(DECIMAL(20,2), REPLACE(REPLACE(worldwide_box_office, '\"', ''), ',', '')) - TRY_CONVERT(DECIMAL(20,2), REPLACE(REPLACE(production_budget, '\"', ''), ',', ''))), 2) AS AVG_profit,\r\n    SUM(TRY_CONVERT(DECIMAL(20,2), REPLACE(REPLACE(production_budget, '\"', ''), ',', ''))) AS total_production_budget,\r\n    SUM(TRY_CONVERT(DECIMAL(20,2), REPLACE(REPLACE(opening_weekend, '\"', ''), ',', ''))) AS total_opening_weekend,\r\n    SUM(TRY_CONVERT(DECIMAL(20,2), REPLACE(REPLACE(domestic_box_office, '\"', ''), ',', ''))) AS total_domestic_box_office,\r\n    SUM(TRY_CONVERT(DECIMAL(20,2), REPLACE(REPLACE(worldwide_box_office, '\"', ''), ',', ''))) AS total_worldwide_box_office,\r\n    ROUND(AVG(TRY_CONVERT(DECIMAL(20,2), REPLACE(REPLACE(production_budget, '\"', ''), ',', ''))), 2) AS AVG_production_budget,\r\n    ROUND(AVG(TRY_CONVERT(DECIMAL(20,2), REPLACE(REPLACE(opening_weekend, '\"', ''), ',', ''))), 2) AS AVG_opening_weekend,\r\n    ROUND(AVG(TRY_CONVERT(DECIMAL(20,2), REPLACE(REPLACE(domestic_box_office, '\"', ''), ',', ''))), 2) AS AVG_domestic_box_office,\r\n    ROUND(AVG(TRY_CONVERT(DECIMAL(20,2), REPLACE(REPLACE(worldwide_box_office, '\"', ''), ',', ''))), 2) AS AVG_worldwide_box_office\r\nFROM silver_franchise_mapping AS f\r\nJOIN silver_marvel_movies AS m\r\nON f.movie_title = m.movie_title\r\nGROUP BY f.franchise_name\r\nORDER BY total_profit DESC, AVG_profit DESC;"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
 			}
 		],
 		"annotations": []
