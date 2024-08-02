@@ -1,0 +1,77 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Nome do Data Factory",
+			"defaultValue": "DFMarvelMovies"
+		},
+		"datalake_connectionString": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'connectionString' de 'datalake'"
+		},
+		"database_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'database'"
+		},
+		"database_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "sqlservermarvelmovies.database.windows.net"
+		},
+		"database_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "DBMarvelMovies"
+		},
+		"database_properties_typeProperties_userName": {
+			"type": "string",
+			"defaultValue": "admindb"
+		},
+		"containerUri": {
+			"type": "string",
+			"metadata": "URI para a conta de armazenamento contendo os modelos do ARM vinculados"
+		},
+		"containerSasToken": {
+			"type": "string",
+			"metadata": "Token SAS para a conta de armazenamento contendo modelos do ARM vinculados"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "DFMarvelMovies_ArmTemplate_0",
+			"type": "Microsoft.Resources/deployments",
+			"apiVersion": "2018-02-01",
+			"properties": {
+				"mode": "incremental",
+				"templateLink": {
+					"uri": "[concat(parameters('containerUri'), '/ArmTemplate_0.json', parameters('containerSasToken'))]",
+					"contentVersion": "1.0.0.0"
+				},
+				"parameters": {
+					"factoryName": {
+						"value": "[parameters('factoryName')]"
+					},
+					"datalake_connectionString": {
+						"value": "[parameters('datalake_connectionString')]"
+					},
+					"database_password": {
+						"value": "[parameters('database_password')]"
+					},
+					"database_properties_typeProperties_server": {
+						"value": "[parameters('database_properties_typeProperties_server')]"
+					},
+					"database_properties_typeProperties_database": {
+						"value": "[parameters('database_properties_typeProperties_database')]"
+					},
+					"database_properties_typeProperties_userName": {
+						"value": "[parameters('database_properties_typeProperties_userName')]"
+					}
+				}
+			},
+			"dependsOn": []
+		}
+	]
+}

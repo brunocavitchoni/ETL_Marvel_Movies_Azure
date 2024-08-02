@@ -1,0 +1,488 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Nome do Data Factory",
+			"defaultValue": "DFMarvelMovies"
+		},
+		"datalake_connectionString": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'connectionString' de 'datalake'"
+		},
+		"database_password": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'password' de 'database'"
+		},
+		"database_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "sqlservermarvelmovies.database.windows.net"
+		},
+		"database_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "DBMarvelMovies"
+		},
+		"database_properties_typeProperties_userName": {
+			"type": "string",
+			"defaultValue": "admindb"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/datalake')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobStorage",
+				"typeProperties": {
+					"connectionString": "[parameters('datalake_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/database')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureSqlDatabase",
+				"typeProperties": {
+					"server": "[parameters('database_properties_typeProperties_server')]",
+					"database": "[parameters('database_properties_typeProperties_database')]",
+					"encrypt": "mandatory",
+					"trustServerCertificate": false,
+					"authenticationType": "SQL",
+					"userName": "[parameters('database_properties_typeProperties_userName')]",
+					"password": {
+						"type": "SecureString",
+						"value": "[parameters('database_password')]"
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DataLake_arquivoCSV')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "datalake",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": "mcu_box_office.csv",
+						"container": "marvel-movies"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": [
+					{
+						"name": "movie_title",
+						"type": "String"
+					},
+					{
+						"name": "mcu_phase",
+						"type": "String"
+					},
+					{
+						"name": "release_date",
+						"type": "String"
+					},
+					{
+						"name": "tomato_meter",
+						"type": "String"
+					},
+					{
+						"name": "audience_score",
+						"type": "String"
+					},
+					{
+						"name": "movie_duration",
+						"type": "String"
+					},
+					{
+						"name": "production_budget",
+						"type": "String"
+					},
+					{
+						"name": "opening_weekend",
+						"type": "String"
+					},
+					{
+						"name": "domestic_box_office",
+						"type": "String"
+					},
+					{
+						"name": "worldwide_box_office",
+						"type": "String"
+					}
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/datalake')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/db_sql')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "database",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "movie_title",
+						"type": "varchar"
+					},
+					{
+						"name": "mcu_phase",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "release_date",
+						"type": "varchar"
+					},
+					{
+						"name": "tomato_meter",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "audience_score",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "movie_duration",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "production_budget",
+						"type": "varchar"
+					},
+					{
+						"name": "opening_weekend",
+						"type": "varchar"
+					},
+					{
+						"name": "domestic_box_office",
+						"type": "varchar"
+					},
+					{
+						"name": "worldwide_box_office",
+						"type": "varchar"
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "bronze_marvel_movies"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/database')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/pipeline1')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "CopyData to bronze_marvel_movies",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "DelimitedTextSource",
+								"storeSettings": {
+									"type": "AzureBlobStorageReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSettings"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "DataLake_arquivoCSV",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "db_sql",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Transform do silver_marvel_movies",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "CopyData to bronze_marvel_movies",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "database",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "Query",
+									"text": "INSERT INTO silver_marvel_movies\r\nSELECT \r\n    movie_title,\r\n    mcu_phase,\r\n    TRY_CAST(release_date AS DATE) AS release_date,\r\n    tomato_meter,\r\n    audience_score,\r\n    movie_duration,\r\n    TRY_CAST(REPLACE(REPLACE(production_budget,'\"',''),',','') AS DECIMAL(20,2)) AS production_budget,\r\n    TRY_CAST(REPLACE(REPLACE(opening_weekend,'\"',''),',','') AS DECIMAL(20,2)) AS opening_weekend,\r\n    TRY_CAST(REPLACE(REPLACE(domestic_box_office,'\"',''),',','') AS DECIMAL(20,2)) AS domestic_box_office,\r\n    TRY_CAST(REPLACE(REPLACE(worldwide_box_office,'\"',''),',','') AS DECIMAL(20,2)) AS worldwide_box_office\r\nFROM bronze_marvel_movies;"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					},
+					{
+						"name": "Transform to silver_franchise_mapping",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "CopyData to bronze_marvel_movies",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "database",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "Query",
+									"text": "INSERT INTO silver_franchise_mapping \r\nSELECT \r\n    movie_title,\r\n    CASE\r\n        WHEN movie_title LIKE '%iron%' THEN 'Iron Man'\r\n        WHEN movie_title LIKE '%hulk%' THEN 'Hulk'\r\n        WHEN movie_title LIKE '%thor%' THEN 'Thor'\r\n        WHEN movie_title LIKE '%america%' THEN 'Captain América'\r\n        WHEN movie_title LIKE '%avengers%' THEN 'Avengers'\r\n        WHEN movie_title LIKE '%guardians%' THEN 'Guardians of the Galaxy'\r\n        WHEN movie_title LIKE '%ant-man%' THEN 'Ant-Man'\r\n        WHEN movie_title LIKE '%strange%' THEN 'Doctor Strange'\r\n        WHEN movie_title LIKE '%spider%' THEN 'Spider-Man'\r\n        WHEN movie_title LIKE '%panther%' THEN 'Black Panther'\r\n        WHEN movie_title LIKE '%marvel%' THEN 'Captain Marvel'\r\n        WHEN movie_title LIKE '%widow%' THEN 'Black Widow'\r\n        WHEN movie_title LIKE '%shang%' THEN 'Shang-Chi'\r\n        WHEN movie_title LIKE '%eternals%' THEN 'Eternals'\r\n        ELSE 'Unknow'\r\n    END AS 'franchise_name'\r\nFROM silver_marvel_movies\r\nGROUP BY movie_title\r\nORDER BY franchise_name;"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					},
+					{
+						"name": "Transform to gold_movies_summary",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "Transform do silver_marvel_movies",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "database",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "Query",
+									"text": "INSERT INTO gold_movies_summary\r\nSELECT \r\n    release_date,\r\n    mcu_phase,\r\n    movie_title,\r\n    tomato_meter,\r\n    audience_score\r\nFROM silver_marvel_movies\r\nORDER BY tomato_meter DESC;\r\n\r\n"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					},
+					{
+						"name": "Transform to gold_movies_financial_performance",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "Transform do silver_marvel_movies",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "database",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "Query",
+									"text": "INSERT INTO gold_movies_financial_performance\r\nSELECT \r\n    release_date,\r\n    mcu_phase,\r\n    movie_title,\r\n    TRY_CAST(REPLACE(REPLACE(worldwide_box_office,'\"',''),',','') AS DECIMAL(20,2)) - TRY_CAST(REPLACE(REPLACE(production_budget,'\"',''),',','') AS DECIMAL(20,2)) AS total_profit,\r\n    TRY_CAST(REPLACE(REPLACE(production_budget,'\"',''),',','') AS DECIMAL(20,2)) AS production_budget,\r\n    TRY_CAST(REPLACE(REPLACE(opening_weekend,'\"',''),',','') AS DECIMAL(20,2)) AS opening_weekend,\r\n    TRY_CAST(REPLACE(REPLACE(domestic_box_office, '\"',''),',','') AS DECIMAL(20,2)) AS domestic_box_office,\r\n    TRY_CAST(REPLACE(REPLACE(worldwide_box_office,'\"',''),',','') AS DECIMAL(20,2)) AS worldwide_box_office\r\nFROM silver_marvel_movies\r\nORDER BY total_profit DESC;\r\n\r\n\r\n\r\n"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					},
+					{
+						"name": "Transform to gold_franchises_summary",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "Transform do silver_marvel_movies",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "Transform to silver_franchise_mapping",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "database",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "Query",
+									"text": "INSERT INTO gold_franchises_summary\r\nSELECT \r\n    f.franchise_name,\r\n    count(*) as total_movies,\r\n    ROUND(AVG(m.tomato_meter),2) AS AVG_tomato_meter,\r\n    ROUND(AVG(m.audience_score),2) AS AVG_audience_score\r\nFROM silver_franchise_mapping AS f\r\nJOIN silver_marvel_movies AS m\r\nON f.movie_title = m.movie_title\r\nGROUP BY franchise_name\r\nORDER BY AVG_tomato_meter DESC, AVG_audience_score DESC;\r\n\r\n\r\n\r\n"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					},
+					{
+						"name": "Transform to gold_franchises_financial_performance",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "Transform do silver_marvel_movies",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "Transform to silver_franchise_mapping",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "database",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "Query",
+									"text": "INSERT INTO gold_franchises_financial_performance\r\nSELECT\r\n    f.franchise_name,\r\n    COUNT(*) AS total_movies,\r\n    SUM(TRY_CAST(REPLACE(REPLACE(worldwide_box_office,'\"',''),',','') AS DECIMAL(20,2)) - TRY_CAST(REPLACE(REPLACE(production_budget,'\"',''),',','') AS DECIMAL(20,2))) AS total_profit,\r\n    ROUND(AVG(TRY_CAST(REPLACE(REPLACE(worldwide_box_office,'\"',''),',','') AS DECIMAL(20,2)) - TRY_CAST(REPLACE(REPLACE(production_budget,'\"',''),',','') AS DECIMAL(20,2))), 2) AS AVG_profit,\r\n    SUM(TRY_CAST(REPLACE(REPLACE(production_budget,'\"',''),',','') AS DECIMAL(20,2))) AS total_production_budget,\r\n    SUM(TRY_CAST(REPLACE(REPLACE(opening_weekend,'\"',''),',','') AS DECIMAL(20,2))) AS total_opening_weekend,\r\n    SUM(TRY_CAST(REPLACE(REPLACE(domestic_box_office, '\"',''),',','') AS DECIMAL(20,2))) AS total_domestic_box_office,\r\n    SUM(TRY_CAST(REPLACE(REPLACE(worldwide_box_office,'\"',''),',','') AS DECIMAL(20,2))) AS total_worldwide_box_office,\r\n    ROUND(AVG(TRY_CAST(REPLACE(REPLACE(production_budget,'\"',''),',','') AS DECIMAL(20,2))), 2) AS AVG_production_budget,\r\n    ROUND(AVG(TRY_CAST(REPLACE(REPLACE(opening_weekend,'\"',''),',','') AS DECIMAL(20,2))), 2) AS AVG_opening_weekend,\r\n    ROUND(AVG(TRY_CAST(REPLACE(REPLACE(domestic_box_office, '\"',''),',','') AS DECIMAL(20,2))), 2) AS AVG_domestic_box_office,\r\n    ROUND(AVG(TRY_CAST(REPLACE(REPLACE(worldwide_box_office,'\"',''),',','') AS DECIMAL(20,2))), 2) AS AVG_worldwide_box_office\r\nFROM silver_franchise_mapping AS f\r\nJOIN silver_marvel_movies AS m ON f.movie_title = m.movie_title\r\nGROUP BY f.franchise_name\r\nORDER BY total_profit DESC, AVG_profit DESC;\r\n\r\n"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/DataLake_arquivoCSV')]",
+				"[concat(variables('factoryId'), '/datasets/db_sql')]",
+				"[concat(variables('factoryId'), '/linkedServices/database')]"
+			]
+		}
+	]
+}
