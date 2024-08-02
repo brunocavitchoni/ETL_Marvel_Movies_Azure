@@ -1,0 +1,61 @@
+{
+	"name": "dbmarvelmovies",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "DBMarvelMovies",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [
+			{
+				"name": "movie_title",
+				"type": "varchar"
+			},
+			{
+				"name": "mcu_phase",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "release_date",
+				"type": "varchar"
+			},
+			{
+				"name": "tomato_meter",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "audience_score",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "movie_duration",
+				"type": "int",
+				"precision": 10
+			},
+			{
+				"name": "production_budget",
+				"type": "varchar"
+			},
+			{
+				"name": "opening_weekend",
+				"type": "varchar"
+			},
+			{
+				"name": "domestic_box_office",
+				"type": "varchar"
+			},
+			{
+				"name": "worldwide_box_office",
+				"type": "varchar"
+			}
+		],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "bronze_marvel_movies"
+		}
+	}
+}
